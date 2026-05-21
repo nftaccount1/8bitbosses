@@ -570,45 +570,102 @@ async function handleMint() {
 }
 
 // ── LIVE MINT POLLING (no wallet needed) ─────────────────
-const PUBLIC_RPC = 'https://eth.llamarpc.com';
+const PUBLIC_RPCS = [
+  'https://eth.llamarpc.com',
+  'https://rpc.ankr.com/eth',
+  'https://cloudflare-eth.com',
+  'https://ethereum.publicnode.com',
+];
 
-async function fetchLiveMintData() {
+async function rpcCall(data, rpcIndex = 0) {
+  if (rpcIndex >= PUBLIC_RPCS.length) throw new Error('All RPCs failed');
   try {
-    const iface = new ethers.Interface([
-      'function totalMinted() view returns (uint256)',
-      'function freeMints() view returns (uint256)',
-    ]);
-
-    const callBody = (data) => ({
+    const r = await fetch(PUBLIC_RPCS[rpcIndex], {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to: CONTRACT_ADDRESS, data }, 'latest'], id: 1 })
     });
-
-    const [r1, r2] = await Promise.all([
-      fetch(PUBLIC_RPC, callBody(iface.encodeFunctionData('totalMinted'))).then(r => r.json()),
-      fetch(PUBLIC_RPC, callBody(iface.encodeFunctionData('freeMints'))).then(r => r.json()),
-    ]);
-
-    const totalMinted = Number(iface.decodeFunctionResult('totalMinted', r1.result)[0]);
-    const freeMinted  = Number(iface.decodeFunctionResult('freeMints',   r2.result)[0]);
-    const paidMinted  = Math.max(0, totalMinted - freeMinted);
-
-    setProgress(totalMinted);
-    document.getElementById('stat-free').textContent = Math.max(0, 3333 - freeMinted);
-    document.getElementById('stat-paid').textContent = Math.max(0, 2222 - paidMinted);
-
-    // update live counter badge
-    const badge = document.getElementById('live-mint-badge');
-    if (badge) {
-      badge.textContent = totalMinted.toLocaleString() + ' / ' + TOTAL_SUPPLY.toLocaleString() + ' MINTED';
-    }
-
-    // update wallet price if connected
-    if (walletAddr) updatePrice();
-
+    const j = await r.json();
+    if (j.error || !j.result || j.result === '0x') throw new Error('Bad result');
+    return j.result;
   } catch(e) {
-    // silently fail — RPC unavailable
+    return rpcCall(data, rpcIndex + 1);
+  }
+}
+
+// Try multiple possible function signatures for totalMinted
+async function getTotalMinted() {
+  const candidates = [
+    'function totalMinted() view returns (uint256)',
+    'function totalSupply() view returns (uint256)',
+    'function _totalMinted() view returns (uint256)',
+    'function numberMinted() view returns (uint256)',
+  ];
+  for (const fn of candidates) {
+    try {
+      const iface = new ethers.Interface([fn]);
+      const fname = fn.match(/function (\w+)/)[1];
+      const result = await rpcCall(iface.encodeFunctionData(fname));
+      const val = Number(iface.decodeFunctionResult(fname, result)[0]);
+      if (!isNaN(val)) return { val, fn: fname };
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function getFreeMinted() {
+  const candidates = [
+    'function freeMints() view returns (uint256)',
+    'function totalFreeMinted() view returns (uint256)',
+    'function mintedFree() view returns (uint256)',
+    'function freeMintsUsed() view returns (uint256)',
+  ];
+  for (const fn of candidates) {
+    try {
+      const iface = new ethers.Interface([fn]);
+      const fname = fn.match(/function (\w+)/)[1];
+      const result = await rpcCall(iface.encodeFunctionData(fname));
+      const val = Number(iface.decodeFunctionResult(fname, result)[0]);
+      if (!isNaN(val)) return val;
+    } catch(e) {}
+  }
+  return null;
+}
+
+function updateLiveBadge(minted, total) {
+  const badge = document.getElementById('live-mint-badge');
+  const pct = ((minted / total) * 100).toFixed(1);
+  if (badge) badge.textContent = minted.toLocaleString() + ' / ' + total.toLocaleString() + ' MINTED (' + pct + '%)';
+}
+
+async function fetchLiveMintData() {
+  try {
+    const [mintedObj, freeMinted] = await Promise.all([getTotalMinted(), getFreeMinted()]);
+
+    if (mintedObj !== null) {
+      const totalMinted = mintedObj.val;
+      const paidMinted  = freeMinted !== null ? Math.max(0, totalMinted - freeMinted) : 0;
+
+      setProgress(totalMinted);
+      updateLiveBadge(totalMinted, TOTAL_SUPPLY);
+
+      if (freeMinted !== null) {
+        document.getElementById('stat-free').textContent = Math.max(0, 3333 - freeMinted).toLocaleString();
+        document.getElementById('stat-paid').textContent = Math.max(0, 2222 - paidMinted).toLocaleString();
+      }
+
+      if (walletAddr) updatePrice();
+
+      // flash badge green on update
+      const badge = document.getElementById('live-mint-badge');
+      if (badge) {
+        badge.style.color = 'var(--px-green)';
+        setTimeout(() => { badge.style.color = 'var(--px-amber)'; }, 600);
+      }
+    }
+  } catch(e) {
+    const badge = document.getElementById('live-mint-badge');
+    if (badge && badge.textContent === 'LOADING...') badge.textContent = 'CONNECT WALLET TO SEE LIVE DATA';
   }
 }
 
