@@ -224,6 +224,11 @@
   <div class="hero">
     <div class="hero-title">8-BIT<br>BOSSES</div>
     <div class="hero-sub">◆ &nbsp; 5,555 8-Bit Pixel Bosses  &nbsp; ◆</div>
+    <div style="margin-top:18px;display:inline-flex;align-items:center;gap:10px;background:rgba(0,255,136,0.07);border:1px solid var(--px-green);padding:8px 18px;">
+      <span style="display:inline-block;width:8px;height:8px;background:var(--px-green);border-radius:50%;box-shadow:0 0 8px var(--px-green);animation:pulse-glow 1.2s ease-in-out infinite;"></span>
+      <span style="font-family:var(--px-pixel);font-size:8px;color:var(--px-green);letter-spacing:2px;">MINTING LIVE</span>
+      <span style="font-family:var(--px-pixel);font-size:8px;color:var(--px-amber);letter-spacing:1px;" id="live-mint-badge">LOADING...</span>
+    </div>
   </div>
 
   <!-- FEATURED BOSS -->
@@ -563,6 +568,53 @@ async function handleMint() {
     btn.style.background = '';
   }
 }
+
+// ── LIVE MINT POLLING (no wallet needed) ─────────────────
+const PUBLIC_RPC = 'https://eth.llamarpc.com';
+
+async function fetchLiveMintData() {
+  try {
+    const iface = new ethers.Interface([
+      'function totalMinted() view returns (uint256)',
+      'function freeMints() view returns (uint256)',
+    ]);
+
+    const callBody = (data) => ({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_call', params: [{ to: CONTRACT_ADDRESS, data }, 'latest'], id: 1 })
+    });
+
+    const [r1, r2] = await Promise.all([
+      fetch(PUBLIC_RPC, callBody(iface.encodeFunctionData('totalMinted'))).then(r => r.json()),
+      fetch(PUBLIC_RPC, callBody(iface.encodeFunctionData('freeMints'))).then(r => r.json()),
+    ]);
+
+    const totalMinted = Number(iface.decodeFunctionResult('totalMinted', r1.result)[0]);
+    const freeMinted  = Number(iface.decodeFunctionResult('freeMints',   r2.result)[0]);
+    const paidMinted  = Math.max(0, totalMinted - freeMinted);
+
+    setProgress(totalMinted);
+    document.getElementById('stat-free').textContent = Math.max(0, 3333 - freeMinted);
+    document.getElementById('stat-paid').textContent = Math.max(0, 2222 - paidMinted);
+
+    // update live counter badge
+    const badge = document.getElementById('live-mint-badge');
+    if (badge) {
+      badge.textContent = totalMinted.toLocaleString() + ' / ' + TOTAL_SUPPLY.toLocaleString() + ' MINTED';
+    }
+
+    // update wallet price if connected
+    if (walletAddr) updatePrice();
+
+  } catch(e) {
+    // silently fail — RPC unavailable
+  }
+}
+
+// Poll every 15 seconds
+fetchLiveMintData();
+setInterval(fetchLiveMintData, 15000);
 
 // ── INIT ─────────────────────────────────────────────────
 buildGallery();
