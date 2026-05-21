@@ -336,6 +336,10 @@
         <div class="info-cell-label">METADATA BASE URI</div>
         <div class="info-cell-val" style="font-size:11px;color:var(--px-muted);">ipfs://bafybeia74zhnsgetj6y4sqbqmjsk6wzltvohpsa5nnjghh7kptdpux4l3u/</div>
       </div>
+      <div class="info-cell" style="grid-column: 1 / -1;" id="contract-address-cell">
+        <div class="info-cell-label">SMART CONTRACT</div>
+        <div class="info-cell-val" style="font-size:11px;word-break:break-all;" id="contract-display"><a href="https://etherscan.io/address/0x19251cd7a65a0934d96f02ea8b1da6c277bd1910" target="_blank" rel="noopener" style="color:var(--px-cyan);text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">0x19251cd7a65a0934d96f02ea8b1da6c277bd1910</a></div>
+      </div>
     </div>
   </div>
 
@@ -343,6 +347,12 @@
   <div class="footer">
     8-BIT BOSSES &nbsp;·&nbsp; ERC-721 &nbsp;·&nbsp; SOLIDITY 0.8.20
     <br><br>
+    <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin-top:12px;flex-wrap:wrap;">
+      <a href="https://x.com/8bit_bosses" target="_blank" rel="noopener" style="font-family:var(--px-pixel);font-size:8px;color:var(--px-cyan);text-decoration:none;border:1px solid var(--px-cyan);padding:6px 12px;letter-spacing:2px;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--px-cyan)';this.style.color='var(--px-bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--px-cyan)'">✦ TWITTER / X</a>
+      <a href="https://opensea.io/collection/8-bit-bosses" target="_blank" rel="noopener" style="font-family:var(--px-pixel);font-size:8px;color:var(--px-green);text-decoration:none;border:1px solid var(--px-green);padding:6px 12px;letter-spacing:2px;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--px-green)';this.style.color='var(--px-bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--px-green)'">⬡ OPENSEA</a>
+      <a href="https://etherscan.io/address/0x19251cd7a65a0934d96f02ea8b1da6c277bd1910" target="_blank" rel="noopener" style="font-family:var(--px-pixel);font-size:8px;color:var(--px-amber);text-decoration:none;border:1px solid var(--px-amber);padding:6px 12px;letter-spacing:2px;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--px-amber)';this.style.color='var(--px-bg)'" onmouseout="this.style.background='transparent';this.style.color='var(--px-amber)'">◈ ETHERSCAN</a>
+    </div>
+    <br>
     <span class="blink" style="color:var(--px-green);">▮</span>
   </div>
 
@@ -373,7 +383,7 @@ const IMAGES = {
 };
 
 // ── CONFIG ──────────────────────────────────────────────
-const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000'; // replace with deployed address
+const CONTRACT_ADDRESS = '0x19251cd7a65a0934d96f02ea8b1da6c277bd1910';
 const CHAIN_ID = 1; // 1 = Ethereum mainnet
 const FREE_LIMIT = 2;
 const PAID_PRICE = 0.0003;
@@ -559,6 +569,8 @@ buildGallery();
 setFeatured(1);
 updatePrice();
 setProgress(0);
+// Show contract address in info grid
+document.getElementById('contract-display').textContent = CONTRACT_ADDRESS;
 </script>
 </body>
 </html>
